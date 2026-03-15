@@ -7,7 +7,7 @@ interface SectionRevealProps {
   delay?: number;
 }
 
-const transition = { duration: 0.8, ease: [0.2, 0, 0, 1] };
+const transition = { duration: 0.8, ease: [0.2, 0, 0, 1] as const };
 
 const SectionReveal = ({ children, className = "", delay = 0 }: SectionRevealProps) => (
   <motion.div
