@@ -73,15 +73,10 @@ const Index = () => {
   return (
     <div>
       {/* Hero */}
-      <section className="relative min-h-screen flex items-center">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: "url('/images/ocean-hero.jpg')" }}
-        >
-          <div className="absolute inset-0 bg-background/60" />
-        </div>
-        <div className="container-wide relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center pt-20">
-          <SectionReveal>
+      <section className="relative h-screen flex items-center" style={{ backgroundColor: '#FAF8F5' }}>
+        <div className="container-wide relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center pt-20 h-full">
+          <SectionReveal className="flex items-center">
+            <div>
             <p className="text-xs tracking-[0.3em] uppercase text-muted-foreground mb-6">
               ICF-PCC Certified Coach
             </p>
@@ -101,15 +96,15 @@ const Index = () => {
                 Explore Services
               </Link>
             </div>
+            </div>
           </SectionReveal>
-          <SectionReveal delay={0.2} className="hidden lg:flex justify-end">
-            <div className="relative group">
+          <SectionReveal delay={0.2} className="hidden lg:flex items-end justify-end h-full pt-20">
+            <div className="relative group h-full">
               <img
                 src="/images/arushi-about.jpg"
                 alt="Coach Arushi Bhardwaj"
-                className="w-[400px] h-[500px] object-cover object-top transition-transform duration-700 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-[1.02]"
+                className="h-full w-auto object-contain object-bottom transition-transform duration-700 ease-[cubic-bezier(0.2,0,0,1)] group-hover:scale-[1.02]"
               />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 border border-accent" />
             </div>
           </SectionReveal>
         </div>
