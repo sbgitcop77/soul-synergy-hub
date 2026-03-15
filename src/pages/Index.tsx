@@ -112,7 +112,7 @@ const Index = () => {
               Achieve.
             </h1>
             <p className="text-lg text-muted-foreground max-w-md leading-relaxed mb-10">
-              Your potential isn't lost. It's just waiting for alignment. Coaching for leaders ready to discover their deeper purpose.
+              I work with professionals and business owners who feel stuck, overwhelmed, or unsure of their next step — whether navigating a difficult job, improving workplace relationships, or scaling a business to its next level.
             </p>
             <div className="flex flex-wrap gap-4">
               <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="btn-primary">
