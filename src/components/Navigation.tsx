@@ -18,12 +18,13 @@ const Navigation = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 nav-blur bg-background/80">
       <div className="container-wide flex items-center justify-between h-20">
-        <Link to="/" className="flex items-center gap-3">
-          <img
-            src="/images/logo.png"
-            alt="SoulSynergy"
-            className="h-12 w-auto"
-          />
+        <Link to="/" className="flex flex-col">
+          <span className="font-display text-2xl font-light tracking-wide text-foreground leading-none">
+            SoulSynergy
+          </span>
+          <span className="text-[9px] tracking-[0.25em] uppercase text-muted-foreground mt-0.5">
+            Uncover. Align. Achieve.
+          </span>
         </Link>
 
         {/* Desktop Nav */}
