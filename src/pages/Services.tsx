@@ -103,9 +103,9 @@ const Services = () => {
                       </div>
                     ))}
                   </div>
-                  <button className="btn-primary w-full text-center text-xs">
+                  <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center text-xs">
                     Book Now
-                  </button>
+                  </a>
                 </div>
               </SectionReveal>
             ))}
@@ -123,9 +123,9 @@ const Services = () => {
             <p className="text-primary-foreground/70 mb-8">
               Book a free 30-minute consultation. No pressure, no commitment — just a conversation about where you are and where you want to be.
             </p>
-            <button className="px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
+            <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="inline-block px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
               Book Free Consultation
-            </button>
+            </a>
           </SectionReveal>
         </div>
       </section>

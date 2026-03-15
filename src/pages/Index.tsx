@@ -1,24 +1,37 @@
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Star, ArrowRight, Compass, Target, Sparkles, Users } from "lucide-react";
+import { Star, ArrowRight, Compass, Target, Sparkles, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import SectionReveal from "@/components/SectionReveal";
 
 const testimonials = [
   {
     name: "Poonam Agrawal",
     title: "Program Management, IT Industry",
-    text: "Working with Arushi ahead of my interview was one of the best decisions I made. She helps you build real confidence. I would wholeheartedly recommend her to anyone looking to level up.",
+    text: "Working with Arushi ahead of my interview was one of the best decisions I made, and I'm so grateful for her guidance. Arushi is an exceptional Professional Coach who has a real gift for distilling complex ideas into advice you can actually use. What stood out most to me was her emphasis on active listening — truly giving 100% of your attention before responding, and then answering exactly what is asked. It sounds simple, but having that principle anchored in my mind completely changed how I showed up. I felt calm, focused, and genuinely present throughout the interview. Arushi's coaching goes beyond tips and tricks — she helps you build real confidence. I would wholeheartedly recommend her to anyone looking to level up their interview skills or their professional growth.",
     rating: 5,
   },
   {
-    name: "Sarah M.",
-    title: "Marketing Director",
-    text: "Arushi's coaching goes beyond tips and tricks — she creates a safe space where transformation happens naturally. My career trajectory completely shifted.",
+    name: "Architect, Construction Industry",
+    title: "",
+    text: "Arushi has given me great insight on how to gather myself for this next step in my life. I have left our sessions feeling confident in creating a plan for the future and it has encouraged me to take action.",
     rating: 5,
   },
   {
-    name: "Ravi K.",
-    title: "Startup Founder",
-    text: "The clarity I gained in just 4 sessions was remarkable. Arushi helped me see what was holding me back and gave me actionable steps to move forward.",
+    name: "Manager, Tech Industry",
+    title: "",
+    text: "Arushi has been extremely helpful with helping me to see more clearly and be able to move forward as needed.",
+    rating: 5,
+  },
+  {
+    name: "VP, Tech Startup",
+    title: "",
+    text: "Arushi is really awesome, she has driven me forward in ways I didn't know I needed, as well as keeping me accountable for my own goals.",
+    rating: 5,
+  },
+  {
+    name: "Jr Associate, Digital Marketing",
+    title: "",
+    text: "I really enjoyed working with Arushi and digging deeper into what I can do to further my career and future!",
     rating: 5,
   },
 ];
@@ -70,6 +83,19 @@ const whoIHelp = [
 ];
 
 const Index = () => {
+  const [current, setCurrent] = useState(0);
+  const isHovered = useRef(false);
+
+  const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);
+  const next = () => setCurrent((c) => (c + 1) % testimonials.length);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isHovered.current) setCurrent((c) => (c + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div>
       {/* Hero */}
@@ -89,9 +115,9 @@ const Index = () => {
               Your potential isn't lost. It's just waiting for alignment. Coaching for leaders ready to discover their deeper purpose.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link to="/services" className="btn-primary">
+              <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="btn-primary">
                 Book Free Session
-              </Link>
+              </a>
               <Link to="/services" className="btn-secondary">
                 Explore Services
               </Link>
@@ -216,26 +242,61 @@ const Index = () => {
               </h2>
             </div>
           </SectionReveal>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((t, i) => (
-              <SectionReveal key={t.name} delay={i * 0.1}>
-                <div className="card-service">
-                  <div className="flex gap-1 mb-4">
-                    {Array.from({ length: t.rating }).map((_, j) => (
-                      <Star key={j} size={14} className="fill-accent text-accent" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-6 italic">
-                    "{t.text}"
-                  </p>
-                  <div>
-                    <p className="text-sm font-medium">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">{t.title}</p>
-                  </div>
+          <SectionReveal>
+            <div
+              className="relative max-w-2xl mx-auto"
+              onMouseEnter={() => { isHovered.current = true; }}
+              onMouseLeave={() => { isHovered.current = false; }}
+            >
+              {/* Card */}
+              <div className="card-service text-center h-[320px] flex flex-col">
+                <div className="flex gap-1 justify-center mb-6 flex-shrink-0">
+                  {Array.from({ length: testimonials[current].rating }).map((_, j) => (
+                    <Star key={j} size={14} className="fill-accent text-accent" />
+                  ))}
                 </div>
-              </SectionReveal>
-            ))}
-          </div>
+                <div className="overflow-y-auto flex-1 mb-6 pr-1">
+                  <p className="text-sm text-muted-foreground leading-relaxed italic">
+                    "{testimonials[current].text}"
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <p className="text-sm font-medium">{testimonials[current].name}</p>
+                  {testimonials[current].title && (
+                    <p className="text-xs text-muted-foreground">{testimonials[current].title}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Arrows */}
+              <button
+                onClick={prev}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-12 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Previous testimonial"
+              >
+                <ChevronLeft size={28} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={next}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-12 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Next testimonial"
+              >
+                <ChevronRight size={28} strokeWidth={1.5} />
+              </button>
+
+              {/* Dots */}
+              <div className="flex justify-center gap-2 mt-8">
+                {testimonials.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrent(i)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${i === current ? "bg-accent w-4" : "bg-muted-foreground/30"}`}
+                    aria-label={`Go to testimonial ${i + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </SectionReveal>
           <SectionReveal className="text-center mt-12">
             <Link to="/testimonials" className="btn-secondary inline-flex items-center gap-2">
               View All Testimonials <ArrowRight size={14} />
