@@ -172,11 +172,15 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ booking }),
     };
   } catch (err) {
-    console.error("confirm-booking error:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    const stack   = err instanceof Error ? err.stack   : undefined;
+    console.error("confirm-booking error:", message);
+    if (stack) console.error(stack);
     return {
       statusCode: 500,
       headers: { ...cors, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Failed to confirm booking" }),
+      // detail is included so you can see it in the browser network tab
+      body: JSON.stringify({ error: "Failed to confirm booking", detail: message }),
     };
   }
 };
