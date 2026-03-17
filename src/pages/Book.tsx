@@ -869,6 +869,7 @@ export default function Book() {
 
   const stripeOptions = {
     clientSecret,
+    paymentMethodOrder: ["card"] as string[],
     appearance: {
       theme: "stripe" as const,
       variables: {
