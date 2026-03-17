@@ -39,6 +39,41 @@ const Testimonials = () => {
   const [current, setCurrent] = useState(0);
   const isHovered = useRef(false);
 
+  // Form state
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) return;
+    setSubmitting(true);
+    setSubmitStatus("idle");
+    try {
+      const res = await fetch(import.meta.env.VITE_N8N_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName, email, rating, message }),
+      });
+      if (!res.ok) throw new Error("Submission failed");
+      setSubmitStatus("success");
+      setFirstName("");
+      setLastName("");
+      setEmail("");
+      setRating(0);
+      setMessage("");
+    } catch {
+      setSubmitStatus("error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);
   const next = () => setCurrent((c) => (c + 1) % testimonials.length);
 
@@ -136,42 +171,89 @@ const Testimonials = () => {
             <h2 className="text-3xl md:text-4xl text-display text-center mb-8">
               Share your <span className="text-display-italic">experience</span>
             </h2>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">First Name *</label>
-                  <input type="text" required className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors" />
+            {submitStatus === "success" ? (
+              <div className="text-center py-12 space-y-3">
+                <p className="text-lg font-display">Thank you for sharing your experience!</p>
+                <p className="text-sm text-muted-foreground">Your testimonial has been submitted and will appear after approval.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Last Name</label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Last Name</label>
-                  <input type="text" className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors" />
+                  <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors"
+                  />
                 </div>
-              </div>
-              <div>
-                <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Email *</label>
-                <input type="email" required className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors" />
-              </div>
-              <div>
-                <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Rating</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} type="button" className="text-muted-foreground/30 hover:text-accent transition-colors">
-                      <Star size={24} />
-                    </button>
-                  ))}
+                <div>
+                  <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Rating *</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="transition-colors"
+                        aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                      >
+                        <Star
+                          size={24}
+                          className={star <= (hoverRating || rating) ? "fill-accent text-accent" : "text-muted-foreground/30"}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  {rating === 0 && submitting && (
+                    <p className="text-xs text-destructive mt-1">Please select a rating.</p>
+                  )}
                 </div>
-              </div>
-              <div>
-                <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Your Testimonial *</label>
-                <textarea required rows={5} className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors resize-none" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                By submitting, you agree to have your first name, star rating, and testimonial published online after approval.
-              </p>
-              <button type="submit" className="btn-primary w-full text-center">
-                Submit Testimonial
-              </button>
-            </form>
+                <div>
+                  <label className="text-xs tracking-wider uppercase text-muted-foreground mb-2 block">Your Testimonial *</label>
+                  <textarea
+                    required
+                    rows={5}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full px-4 py-3 bg-secondary border border-border text-sm focus:outline-none focus:border-accent transition-colors resize-none"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  By submitting, you agree to have your first name, star rating, and testimonial published online after approval.
+                </p>
+                {submitStatus === "error" && (
+                  <p className="text-xs text-destructive">Something went wrong. Please try again or email us directly.</p>
+                )}
+                <button type="submit" disabled={submitting} className="btn-primary w-full text-center disabled:opacity-50">
+                  {submitting ? "Submitting…" : "Submit Testimonial"}
+                </button>
+              </form>
+            )}
           </SectionReveal>
         </div>
       </section>

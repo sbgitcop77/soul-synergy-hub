@@ -71,6 +71,9 @@ RESEND_API_KEY=
 
 # Calendly
 VITE_CALENDLY_URL=https://calendly.com/connect-sscoach
+
+# n8n (testimonial form webhook — handles Neon DB insert + Resend email)
+VITE_N8N_WEBHOOK_URL=
 ```
 
 > No environment variables are required to run the project locally in its current state.
