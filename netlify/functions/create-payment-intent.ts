@@ -66,9 +66,10 @@ export const handler: Handler = async (event) => {
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      amount:   finalAmount,
-      currency: "usd",
-      receipt_email: clientEmail,
+      amount:               finalAmount,
+      currency:             "usd",
+      payment_method_types: ["card"],
+      receipt_email:        clientEmail,
       metadata: {
         service,
         clientName,

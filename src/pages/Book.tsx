@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Check, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Building2 } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { loadStripe } from "@stripe/stripe-js";
 import {
@@ -494,6 +494,81 @@ function OrderSummary({
 }
 
 // ---------------------------------------------------------------------------
+// Alternative payment methods (PayPal + Bank Transfer / Zelle)
+// ---------------------------------------------------------------------------
+function AlternativePayments() {
+  const [showBank, setShowBank] = useState(false);
+
+  return (
+    <div className="max-w-lg mx-auto mt-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-border" />
+        <p className="text-xs tracking-[0.15em] uppercase text-muted-foreground whitespace-nowrap">
+          Prefer a different payment method?
+        </p>
+        <div className="flex-1 h-px bg-border" />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* PayPal */}
+        <a
+          href="https://www.paypal.com/paypalme/soulsynergycoach"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="card-service flex flex-col items-center gap-3 p-5 hover:border-accent transition-colors cursor-pointer group no-underline"
+        >
+          {/* PayPal logo mark */}
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="PayPal">
+            <circle cx="18" cy="18" r="18" fill="#F5F5F5"/>
+            <path d="M24.5 10.5H14.5C13.4 10.5 12.5 11.3 12.3 12.4L10 24.5C9.9 25.1 10.4 25.5 11 25.5H14.5L15.2 21.5H19.5C22.8 21.5 25.5 19 25.9 15.8L26.2 13.5C26.5 11.8 25.2 10.5 24.5 10.5Z" fill="#009CDE"/>
+            <path d="M13 14.5H17.5C19.4 14.5 20.5 15.5 20.3 17.4L20 19.5H16.5L15.5 25.5H12L14 13.5L13 14.5Z" fill="#012169"/>
+          </svg>
+          <div className="text-center">
+            <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">Pay with PayPal</p>
+            <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+              You will be redirected to PayPal to complete payment. Please email{" "}
+              <span className="text-accent">connect.sscoach@gmail.com</span>{" "}
+              with your booking details after payment.
+            </p>
+          </div>
+        </a>
+
+        {/* Bank Transfer / Zelle */}
+        <button
+          type="button"
+          onClick={() => setShowBank((v) => !v)}
+          className="card-service flex flex-col items-center gap-3 p-5 hover:border-accent transition-colors cursor-pointer group text-left w-full"
+        >
+          <Building2 size={36} className="text-[#2D6A6A] shrink-0" />
+          <div className="text-center w-full">
+            <p className="text-sm font-medium text-foreground group-hover:text-accent transition-colors">
+              Pay by Bank Transfer or Zelle
+            </p>
+            {showBank ? (
+              <div className="mt-3 text-left space-y-2 text-[11px] text-muted-foreground">
+                <div className="bg-secondary border border-border px-3 py-2">
+                  <span className="text-xs tracking-wider uppercase text-muted-foreground block mb-1">Zelle</span>
+                  <span className="font-medium text-foreground text-sm">connect.sscoach@gmail.com</span>
+                </div>
+                <p className="leading-snug">
+                  Please use your name and session date as the payment reference. Email{" "}
+                  <span className="text-accent">connect.sscoach@gmail.com</span>{" "}
+                  to confirm your booking after payment.
+                </p>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Tap to see bank &amp; Zelle details
+              </p>
+            )}
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Step 4a — Dev mock payment form (no Stripe hooks)
 // ---------------------------------------------------------------------------
 function DevPaymentForm({
@@ -513,26 +588,32 @@ function DevPaymentForm({
   };
 
   return (
-    <form onSubmit={handlePay} className="max-w-lg mx-auto space-y-6">
-      <h2 className="text-3xl md:text-4xl text-display text-center mb-2">Complete your <span className="text-display-italic">payment</span></h2>
-      <OrderSummary service={service} date={date} time={time} discount={discount} finalAmount={finalAmount} />
-      <div className="card-service space-y-3">
-        <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Dev Mode — Mock Payment</p>
-        <div className="flex items-center gap-3 bg-secondary border border-border px-4 py-3">
-          <span className="text-xs text-muted-foreground">Test card:</span>
-          <span className="text-sm font-mono tracking-widest">4242 4242 4242 4242</span>
+    <div className="max-w-lg mx-auto">
+      <form onSubmit={handlePay} className="space-y-6">
+        <h2 className="text-3xl md:text-4xl text-display text-center mb-2">Complete your <span className="text-display-italic">payment</span></h2>
+        <OrderSummary service={service} date={date} time={time} discount={discount} finalAmount={finalAmount} />
+        <div className="card-service space-y-3">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Dev Mode — Mock Payment</p>
+            <span className="text-[10px] tracking-[0.15em] uppercase bg-accent/10 text-accent px-2 py-0.5 font-medium">Recommended</span>
+          </div>
+          <div className="flex items-center gap-3 bg-secondary border border-border px-4 py-3">
+            <span className="text-xs text-muted-foreground">Test card:</span>
+            <span className="text-sm font-mono tracking-widest">4242 4242 4242 4242</span>
+          </div>
+          <p className="text-xs text-muted-foreground">No real charge will be made. Clicking Pay Now skips Stripe and goes directly to confirmation.</p>
         </div>
-        <p className="text-xs text-muted-foreground">No real charge will be made. Clicking Pay Now skips Stripe and goes directly to confirmation.</p>
-      </div>
-      <div className="flex gap-4 justify-between">
-        <button type="button" onClick={onBack} disabled={paying} className="btn-secondary flex items-center gap-2 disabled:opacity-40">
-          <ChevronLeft size={14} /> Back
-        </button>
-        <button type="submit" disabled={paying} className="btn-primary flex items-center gap-2 disabled:opacity-40">
-          {paying ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : `Pay $${displayFinal.toFixed(2)}`}
-        </button>
-      </div>
-    </form>
+        <div className="flex gap-4 justify-between">
+          <button type="button" onClick={onBack} disabled={paying} className="btn-secondary flex items-center gap-2 disabled:opacity-40">
+            <ChevronLeft size={14} /> Back
+          </button>
+          <button type="submit" disabled={paying} className="btn-primary flex items-center gap-2 disabled:opacity-40">
+            {paying ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : `Pay $${displayFinal.toFixed(2)}`}
+          </button>
+        </div>
+      </form>
+      <AlternativePayments />
+    </div>
   );
 }
 
@@ -575,22 +656,29 @@ function StripePaymentForm({
   };
 
   return (
-    <form onSubmit={handlePay} className="max-w-lg mx-auto space-y-6">
-      <h2 className="text-3xl md:text-4xl text-display text-center mb-2">Complete your <span className="text-display-italic">payment</span></h2>
-      <OrderSummary service={service} date={date} time={time} discount={discount} finalAmount={finalAmount} />
-      <div className="card-service">
-        <PaymentElement />
-      </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      <div className="flex gap-4 justify-between">
-        <button type="button" onClick={onBack} disabled={paying} className="btn-secondary flex items-center gap-2 disabled:opacity-40">
-          <ChevronLeft size={14} /> Back
-        </button>
-        <button type="submit" disabled={!stripe || paying} className="btn-primary flex items-center gap-2 disabled:opacity-40">
-          {paying ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : `Pay $${displayFinal.toFixed(2)}`}
-        </button>
-      </div>
-    </form>
+    <div className="max-w-lg mx-auto">
+      <form onSubmit={handlePay} className="space-y-6">
+        <h2 className="text-3xl md:text-4xl text-display text-center mb-2">Complete your <span className="text-display-italic">payment</span></h2>
+        <OrderSummary service={service} date={date} time={time} discount={discount} finalAmount={finalAmount} />
+        <div className="card-service space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Pay by Card</p>
+            <span className="text-[10px] tracking-[0.15em] uppercase bg-accent/10 text-accent px-2 py-0.5 font-medium">Recommended</span>
+          </div>
+          <PaymentElement />
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <div className="flex gap-4 justify-between">
+          <button type="button" onClick={onBack} disabled={paying} className="btn-secondary flex items-center gap-2 disabled:opacity-40">
+            <ChevronLeft size={14} /> Back
+          </button>
+          <button type="submit" disabled={!stripe || paying} className="btn-primary flex items-center gap-2 disabled:opacity-40">
+            {paying ? <><Loader2 size={14} className="animate-spin" /> Processing…</> : `Pay $${displayFinal.toFixed(2)}`}
+          </button>
+        </div>
+      </form>
+      <AlternativePayments />
+    </div>
   );
 }
 
