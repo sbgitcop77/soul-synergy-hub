@@ -4,6 +4,7 @@ import SectionReveal from "@/components/SectionReveal";
 
 const services = [
   {
+    slug: "clarity-session",
     name: "Clarity Session",
     price: "$50",
     duration: "60 min · Single Session",
@@ -16,6 +17,7 @@ const services = [
     ],
   },
   {
+    slug: "align-with-goals",
     name: "Align with Goals",
     price: "$200",
     duration: "4 Sessions · 2 Months",
@@ -30,6 +32,7 @@ const services = [
     ],
   },
   {
+    slug: "90-day-transformation",
     name: "90-Day Transformation",
     price: "$600",
     duration: "12 Sessions · 3 Months",
@@ -44,6 +47,7 @@ const services = [
     ],
   },
   {
+    slug: "pay-as-you-go",
     name: "Pay as You Go",
     price: "$50",
     duration: "Per Session · Flexible",
@@ -103,7 +107,7 @@ const Services = () => {
                       </div>
                     ))}
                   </div>
-                  <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center text-xs">
+                  <a href={`/book?service=${service.slug}`} className="btn-primary w-full text-center text-xs">
                     Book Now
                   </a>
                 </div>
@@ -123,7 +127,7 @@ const Services = () => {
             <p className="text-primary-foreground/70 mb-8">
               Book a free 30-minute consultation. No pressure, no commitment — just a conversation about where you are and where you want to be.
             </p>
-            <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="inline-block px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
+            <a href="/book?service=free-consultation" className="inline-block px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
               Book Free Consultation
             </a>
           </SectionReveal>

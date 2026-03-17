@@ -38,12 +38,14 @@ const testimonials = [
 
 const services = [
   {
+    slug: "clarity-session",
     name: "Clarity Session",
     price: "$50",
     duration: "60 min · Single Session",
     description: "A focused session to gain clarity on your most pressing challenge.",
   },
   {
+    slug: "align-with-goals",
     name: "Align with Goals",
     price: "$200",
     duration: "4 Sessions · 2 Months",
@@ -51,12 +53,14 @@ const services = [
     popular: true,
   },
   {
+    slug: "90-day-transformation",
     name: "90-Day Transformation",
     price: "$600",
     duration: "12 Sessions · 3 Months",
     description: "A comprehensive journey of personal and professional transformation.",
   },
   {
+    slug: "pay-as-you-go",
     name: "Pay as You Go",
     price: "$50",
     duration: "Per Session · Flexible",
@@ -115,9 +119,9 @@ const Index = () => {
               I work with professionals and business owners who feel stuck, overwhelmed, or unsure of their next step — whether navigating a difficult job, improving workplace relationships, or scaling a business to its next level.
             </p>
             <div className="flex flex-wrap gap-4">
-              <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="btn-primary">
+              <Link to="/book?service=free-consultation" className="btn-primary">
                 Book Free Session
-              </a>
+              </Link>
               <Link to="/services" className="btn-secondary">
                 Explore Services
               </Link>
@@ -219,9 +223,9 @@ const Index = () => {
                   <p className="text-3xl font-display font-light mb-1">{service.price}</p>
                   <p className="text-xs text-muted-foreground tracking-wider mb-4">{service.duration}</p>
                   <p className="text-sm text-muted-foreground leading-relaxed mb-6 flex-1">{service.description}</p>
-                  <Link to="/services" className="btn-primary text-xs w-full text-center">
+                  <a href={`/book?service=${service.slug}`} className="btn-primary text-xs w-full text-center">
                     Book Now
-                  </Link>
+                  </a>
                 </div>
               </SectionReveal>
             ))}

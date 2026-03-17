@@ -137,7 +137,7 @@ const About = () => {
             <p className="text-primary-foreground/70 mb-8">
               Book your first free 30-minute consultation and discover how coaching can transform your path.
             </p>
-            <a href="https://calendly.com/connect-sscoach" target="_blank" rel="noopener noreferrer" className="inline-block px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
+            <a href="/book?service=free-consultation" className="inline-block px-8 py-4 bg-accent text-accent-foreground text-sm tracking-[0.15em] uppercase hover:opacity-90 transition-opacity">
               Book Free Consultation
             </a>
           </SectionReveal>

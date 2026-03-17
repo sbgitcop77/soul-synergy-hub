@@ -41,7 +41,7 @@ const Navigation = () => {
               {link.label}
             </Link>
           ))}
-          <Link to="/services" className="btn-primary text-xs px-6 py-3">
+          <Link to="/book" className="btn-primary text-xs px-6 py-3">
             Book a Session
           </Link>
         </div>
@@ -81,7 +81,7 @@ const Navigation = () => {
                 </Link>
               ))}
               <Link
-                to="/services"
+                to="/book"
                 onClick={() => setIsOpen(false)}
                 className="btn-primary text-xs text-center"
               >
