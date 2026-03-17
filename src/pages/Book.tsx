@@ -5,7 +5,7 @@ import { DayPicker } from "react-day-picker";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
-  PaymentElement,
+  CardElement,
   useStripe,
   useElements,
 } from "@stripe/react-stripe-js";
@@ -621,10 +621,10 @@ function DevPaymentForm({
 // Step 4b — Real Stripe payment form (must be inside <Elements>)
 // ---------------------------------------------------------------------------
 function StripePaymentForm({
-  service, date, time, clientEmail, discount, finalAmount, onSuccess, onBack,
+  service, date, time, clientEmail, clientSecret, discount, finalAmount, onSuccess, onBack,
 }: {
-  service: Service; date: Date; time: string; clientEmail: string; discount: Discount | null;
-  finalAmount: number; onSuccess: (id: string) => void; onBack: () => void;
+  service: Service; date: Date; time: string; clientEmail: string; clientSecret: string;
+  discount: Discount | null; finalAmount: number; onSuccess: (id: string) => void; onBack: () => void;
 }) {
   const stripe   = useStripe();
   const elements = useElements();
@@ -638,11 +638,17 @@ function StripePaymentForm({
     setPaying(true);
     setError("");
 
-    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-      confirmParams: { receipt_email: clientEmail },
-    });
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setError("Card form not loaded. Please refresh and try again.");
+      setPaying(false);
+      return;
+    }
+
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+      clientSecret,
+      { payment_method: { card: cardElement }, receipt_email: clientEmail },
+    );
 
     if (stripeError) {
       setError(stripeError.message ?? "Payment failed. Please try again.");
@@ -665,7 +671,20 @@ function StripePaymentForm({
             <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground">Pay by Card</p>
             <span className="text-[10px] tracking-[0.15em] uppercase bg-accent/10 text-accent px-2 py-0.5 font-medium">Recommended</span>
           </div>
-          <PaymentElement />
+          <CardElement
+            options={{
+              style: {
+                base: {
+                  fontSize:        "14px",
+                  color:           "#1a1a1a",
+                  fontFamily:      "inherit",
+                  "::placeholder": { color: "#9e9e9e" },
+                },
+                invalid: { color: "#c0392b" },
+              },
+              hidePostalCode: false,
+            }}
+          />
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex gap-4 justify-between">
@@ -869,7 +888,6 @@ export default function Book() {
 
   const stripeOptions = {
     clientSecret,
-    paymentMethodOrder: ["card"] as string[],
     appearance: {
       theme: "stripe" as const,
       variables: {
@@ -922,6 +940,7 @@ export default function Book() {
                 date={date!}
                 time={time}
                 clientEmail={clientEmail}
+                clientSecret={clientSecret}
                 discount={discount}
                 finalAmount={finalAmount}
                 onSuccess={handlePaymentSuccess}
