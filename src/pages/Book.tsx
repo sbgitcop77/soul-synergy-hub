@@ -717,7 +717,7 @@ function ConfirmationStep({ booking }: { booking: Booking }) {
       <div className="card-service text-left space-y-3 text-sm">
         <p className="text-xs tracking-[0.2em] uppercase text-muted-foreground mb-3">Booking Details</p>
         <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span>{booking.service}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span>{formatDate(new Date(booking.date + "T12:00:00"))}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span>{formatDate(new Date(booking.date.slice(0, 10) + "T12:00:00"))}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Time</span><span>{formatTime(booking.time)}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span>{booking.client_name}</span></div>
         {booking.amount_paid > 0 && (
