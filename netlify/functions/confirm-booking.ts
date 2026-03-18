@@ -6,6 +6,19 @@ import { google } from "googleapis";
 const CALENDAR_ID = "connect.sscoach@gmail.com";
 const TIMEZONE    = "America/New_York";
 
+/** Strip query-string parameters unsupported by @neondatabase/serverless */
+function cleanNeonUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.searchParams.delete("channel_binding");
+    return u.toString();
+  } catch {
+    return raw;
+  }
+}
+
+const sql = neon(cleanNeonUrl(process.env.NEON_DATABASE_URL!));
+
 const cors = {
   "Access-Control-Allow-Origin":  "*",
   "Access-Control-Allow-Headers": "Content-Type",
@@ -57,7 +70,6 @@ export const handler: Handler = async (event) => {
   }
 
   const isFree = paymentIntentId === null;
-  const sql    = neon(process.env.NEON_DATABASE_URL!);
 
   // For paid bookings: verify payment via Stripe
   let amountPaidCents = 0;
