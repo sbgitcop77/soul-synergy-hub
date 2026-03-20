@@ -1,6 +1,5 @@
 import Stripe from "stripe";
 import { neon } from "@neondatabase/serverless";
-import { google } from "googleapis";
 
 const CALENDAR_ID = "connect.sscoach@gmail.com";
 const TIMEZONE    = "America/New_York";
@@ -27,6 +26,21 @@ function slotToUTC(dateStr: string, hour: number): Date {
   const offsetHours = nyHourAtNoon - 12;
   const utcHour = hour - offsetHours;
   return new Date(`${dateStr}T${String(utcHour).padStart(2, "0")}:00:00.000Z`);
+}
+
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id:     clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type:    "refresh_token",
+    }),
+  });
+  const data = await res.json() as { access_token: string };
+  return data.access_token;
 }
 
 const cors = {
@@ -120,37 +134,43 @@ export async function onRequest(context: {
       });
     }
 
-    // 2. Create Google Calendar event
+    // 2. Create Google Calendar event via REST API
     let calendarEventId: string | null = null;
     try {
-      const oauth2Client = new google.auth.OAuth2(
+      const accessToken = await getAccessToken(
         env.VITE_GOOGLE_CLIENT_ID,
-        env.GOOGLE_CLIENT_SECRET
+        env.GOOGLE_CLIENT_SECRET,
+        env.GOOGLE_REFRESH_TOKEN
       );
-      oauth2Client.setCredentials({ refresh_token: env.GOOGLE_REFRESH_TOKEN });
 
-      const calendar     = google.calendar({ version: "v3", auth: oauth2Client });
       const hour         = parseInt(time.split(":")[0]);
       const startUTC     = slotToUTC(date, hour);
       const durationMins = isFree ? 30 : 60;
       const endUTC       = new Date(startUTC.getTime() + durationMins * 60 * 1000);
 
-      const calEvent = await calendar.events.insert({
-        calendarId: CALENDAR_ID,
-        sendUpdates: "all",
-        requestBody: {
-          summary:     `${isFree ? "Free Consultation" : "Coaching Session"} — ${clientName}`,
-          description: `Service: ${service}\nClient: ${clientName}\nEmail: ${clientEmail}`,
-          start: { dateTime: startUTC.toISOString(), timeZone: TIMEZONE },
-          end:   { dateTime: endUTC.toISOString(),   timeZone: TIMEZONE },
-          attendees: [
-            { email: CALENDAR_ID },
-            { email: clientEmail, displayName: clientName },
-          ],
-        },
-      });
+      const calRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?sendUpdates=all`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type":  "application/json",
+          },
+          body: JSON.stringify({
+            summary:     `${isFree ? "Free Consultation" : "Coaching Session"} — ${clientName}`,
+            description: `Service: ${service}\nClient: ${clientName}\nEmail: ${clientEmail}`,
+            start: { dateTime: startUTC.toISOString(), timeZone: TIMEZONE },
+            end:   { dateTime: endUTC.toISOString(),   timeZone: TIMEZONE },
+            attendees: [
+              { email: CALENDAR_ID },
+              { email: clientEmail, displayName: clientName },
+            ],
+          }),
+        }
+      );
 
-      calendarEventId = calEvent.data.id ?? null;
+      const calData = await calRes.json() as { id?: string };
+      calendarEventId = calData.id ?? null;
     } catch (calErr) {
       console.error("Google Calendar event creation failed:", calErr);
     }

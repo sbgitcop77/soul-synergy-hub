@@ -1,5 +1,3 @@
-import { google } from "googleapis";
-
 const CALENDAR_ID = "connect.sscoach@gmail.com";
 const TIMEZONE    = "America/New_York";
 const SLOT_MINS   = 60;
@@ -26,6 +24,21 @@ function slotToUTC(dateStr: string, hour: number): Date {
   return new Date(`${dateStr}T${String(utcHour).padStart(2, "0")}:00:00.000Z`);
 }
 
+async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id:     clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+      grant_type:    "refresh_token",
+    }),
+  });
+  const data = await res.json() as { access_token: string };
+  return data.access_token;
+}
+
 export async function onRequest(context: {
   request: Request;
   env: Record<string, string>;
@@ -48,26 +61,34 @@ export async function onRequest(context: {
   }
 
   try {
-    const oauth2Client = new google.auth.OAuth2(
+    const accessToken = await getAccessToken(
       env.VITE_GOOGLE_CLIENT_ID,
-      env.GOOGLE_CLIENT_SECRET
+      env.GOOGLE_CLIENT_SECRET,
+      env.GOOGLE_REFRESH_TOKEN
     );
-    oauth2Client.setCredentials({ refresh_token: env.GOOGLE_REFRESH_TOKEN });
 
-    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-    const timeMin  = new Date(year, month - 1, 1).toISOString();
-    const timeMax  = new Date(year, month, 0, 23, 59, 59).toISOString();
+    const timeMin = new Date(year, month - 1, 1).toISOString();
+    const timeMax = new Date(year, month, 0, 23, 59, 59).toISOString();
 
-    const freeBusy = await calendar.freebusy.query({
-      requestBody: {
+    const freeBusyRes = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type":  "application/json",
+      },
+      body: JSON.stringify({
         timeMin,
         timeMax,
         timeZone: TIMEZONE,
         items: [{ id: CALENDAR_ID }],
-      },
+      }),
     });
 
-    const busy = freeBusy.data.calendars?.[CALENDAR_ID]?.busy ?? [];
+    const freeBusyData = await freeBusyRes.json() as {
+      calendars: Record<string, { busy: { start: string; end: string }[] }>;
+    };
+
+    const busy = freeBusyData.calendars?.[CALENDAR_ID]?.busy ?? [];
     const now  = new Date();
     const daysInMonth = new Date(year, month, 0).getDate();
     const availability: Record<string, string[]> = {};
@@ -83,8 +104,8 @@ export async function onRequest(context: {
         if (slotStart <= now) continue;
 
         const isBusy = busy.some((b) => {
-          const bStart = new Date(b.start!);
-          const bEnd   = new Date(b.end!);
+          const bStart = new Date(b.start);
+          const bEnd   = new Date(b.end);
           return slotStart < bEnd && slotEnd > bStart;
         });
 
