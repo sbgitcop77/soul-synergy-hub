@@ -239,7 +239,7 @@ function DateTimeStep({
         setAvailability((prev) => ({ ...prev, ...buildMockAvailability(m) }));
       } else {
         const res = await fetch(
-          `/.netlify/functions/get-availability?year=${m.getFullYear()}&month=${m.getMonth() + 1}`
+          `/api/get-availability?year=${m.getFullYear()}&month=${m.getMonth() + 1}`
         );
         if (!res.ok) throw new Error("Failed to load availability");
         const data = await res.json();
@@ -372,7 +372,7 @@ function DetailsStep({
         await new Promise((r) => setTimeout(r, 300));
         setDiscount({ promoId: "mock_promo", percent_off: 10, amount_off: null, name: codeInput.trim() });
       } else {
-        const res  = await fetch("/.netlify/functions/validate-discount", {
+        const res  = await fetch("/api/validate-discount", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: codeInput.trim() }),
@@ -775,7 +775,7 @@ export default function Book() {
         });
         setStep(5);
       } else {
-        const res = await fetch("/.netlify/functions/confirm-booking", {
+        const res = await fetch("/api/confirm-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -820,7 +820,7 @@ export default function Book() {
         setFinalAmount(base - discount);
         setStep(4);
       } else {
-        const res = await fetch("/.netlify/functions/create-payment-intent", {
+        const res = await fetch("/api/create-payment-intent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -864,7 +864,7 @@ export default function Book() {
         });
         setStep(5);
       } else {
-        const res = await fetch("/.netlify/functions/confirm-booking", {
+        const res = await fetch("/api/confirm-booking", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
