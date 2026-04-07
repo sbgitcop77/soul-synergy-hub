@@ -2,6 +2,3 @@ name = "soulsynergy-coach"
 pages_build_output_dir = "dist"
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2024-09-23"
-
-[build]
-command = "npm install && npm run build"
