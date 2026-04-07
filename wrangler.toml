@@ -3,8 +3,5 @@ pages_build_output_dir = "dist"
 compatibility_flags = ["nodejs_compat"]
 compatibility_date = "2024-09-23"
 
-[vars]
-VITE_GOOGLE_CLIENT_ID = "300587304840-rjo2ppl636g044a185qk7rico9m0kd4j.apps.googleusercontent.com"
-VITE_STRIPE_PUBLISHABLE_KEY = "pk_test_51TBaGE3PDM53AALuqOYpUm79uPBlnOlIUvp2OWNs5ftzB7Sn6BchmoKDnUrzcY15C92B1VShYIgUa03Tkpu1KbV300mrhGyxuG"
-VITE_N8N_WEBHOOK_URL = "https://uninforming-tory-herbaceously.ngrok-free.dev"
-VITE_N8N_BOOKING_WEBHOOK_URL = "https://uninforming-tory-herbaceously.ngrok-free.dev/webhook/wf-booking-confirmation"
+[build]
+command = "npm install && npm run build"
