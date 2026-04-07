@@ -55,7 +55,7 @@ const Testimonials = () => {
     setSubmitting(true);
     setSubmitStatus("idle");
     try {
-      const res = await fetch(import.meta.env.VITE_N8N_WEBHOOK_URL, {
+      const res = await fetch(`${import.meta.env.VITE_N8N_WEBHOOK_URL}/webhook/wf2-testimonial-form`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName, email, rating, message }),
