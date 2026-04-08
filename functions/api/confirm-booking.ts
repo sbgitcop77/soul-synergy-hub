@@ -187,7 +187,7 @@ export async function onRequest(context: {
     const booking = result[0];
 
     // 4. Trigger n8n webhook (fire-and-forget)
-    const webhookUrl = env.VITE_N8N_WEBHOOK_URL;
+    const webhookUrl = env.VITE_N8N_BOOKING_WEBHOOK_URL;
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: "POST",

@@ -1,0 +1,161 @@
+{
+  "name": "WF3 — Session Reminder 2 Days Before",
+  "nodes": [
+    {
+      "id": "d1111111-1111-1111-1111-111111111111",
+      "name": "Daily 9am Cron",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d2222222-2222-2222-2222-222222222222",
+      "name": "Query Upcoming Sessions",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [460, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.id AS session_id,\n  s.scheduled_at,\n  s.type AS session_type,\n  c.id AS contact_id,\n  c.first_name,\n  c.last_name,\n  c.email\nFROM sessions s\nJOIN contacts c ON c.id = s.contact_id\nWHERE s.tenant_id = 1\n  AND s.coach_id = 1\n  AND s.status = 'scheduled'\n  AND (s.scheduled_at AT TIME ZONE 'America/New_York')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date + INTERVAL '2 days'"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "d3333333-3333-3333-3333-333333333333",
+      "name": "Session Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "d3-cond-1",
+              "leftValue": "={{ $json.session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "d4444444-4444-4444-4444-444444444444",
+      "name": "Build Reminder Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  const firstName    = (data.first_name || 'there').trim();\n  const email        = (data.email     || '').trim();\n  const sessionId    = data.session_id;\n  const contactId    = data.contact_id;\n  const scheduledAt  = new Date(data.scheduled_at);\n\n  const dateStr = scheduledAt.toLocaleDateString('en-US', {\n    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',\n    timeZone: 'America/New_York'\n  });\n  const timeStr = scheduledAt.toLocaleTimeString('en-US', {\n    hour: '2-digit', minute: '2-digit', hour12: true,\n    timeZone: 'America/New_York'\n  });\n\n  const html = [\n    '<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">',\n    '<h2 style=\"color:#2D6A6A;margin-bottom:16px\">\\u23F0 Your Session is in 2 Days!</h2>',\n    '<p style=\"line-height:1.7;color:#333\">Hi ' + firstName + ',</p>',\n    '<p style=\"line-height:1.7;color:#333\">Just a friendly reminder that your coaching session with Arushi is coming up soon:</p>',\n    '<div style=\"background:#f0f7f7;border-left:4px solid #2D6A6A;padding:16px;margin:20px 0;border-radius:0 4px 4px 0\">',\n    '<p style=\"margin:0;font-size:16px;color:#2D6A6A;font-weight:bold\">' + dateStr + '</p>',\n    '<p style=\"margin:6px 0 0;font-size:14px;color:#555\">' + timeStr + ' EST</p>',\n    '</div>',\n    '<p style=\"line-height:1.7;color:#333\"><strong>To make the most of your session, you may want to:</strong></p>',\n    '<ul style=\"color:#333;line-height:2.0;padding-left:20px\">',\n    '<li>Reflect on what you most want to focus on or achieve in this session</li>',\n    '<li>Note any wins, challenges, or shifts since your last session</li>',\n    '<li>Find a quiet, comfortable space free from distractions</li>',\n    '<li>Have a pen and paper nearby to capture any insights or action items</li>',\n    '</ul>',\n    '<p style=\"line-height:1.7;color:#333\">Looking forward to our time together!</p>',\n    '<p style=\"line-height:1.7;color:#333\">Warmly,<br><strong>Arushi Bhardwaj</strong><br>SoulSynergy Coaching</p>',\n    '<hr style=\"border:none;border-top:1px solid #eee;margin:24px 0\">',\n    '<p style=\"color:#999;font-size:12px\">SoulSynergy Coaching &mdash; Uncover. Align. Achieve.</p>',\n    '</div>'\n  ].join('');\n\n  const resendPayload = JSON.stringify({\n    from: 'SoulSynergy Coaching <onboarding@resend.dev>',\n    to: [email],\n    subject: '\\u23F0 Reminder: Your coaching session is in 2 days',\n    html: html\n  });\n\n  return {\n    json: {\n      session_id:     sessionId,\n      contact_id:     contactId,\n      email:          email,\n      resend_payload: resendPayload\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "d5555555-5555-5555-5555-555555555555",
+      "name": "Send Reminder via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_7fm5JUf6_27NeuHnavv9zyv9woPkN1BxU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Build Reminder Email').item.json.resend_payload }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "d6666666-6666-6666-6666-666666666666",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1340, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO interactions (tenant_id, contact_id, session_id, direction, channel, subject, body, workflow_id)\nVALUES (1, {{ $('Build Reminder Email').item.json.contact_id }}, {{ $('Build Reminder Email').item.json.session_id }}, 'outbound', 'email', 'Session Reminder — 2 Days', 'Automated 2-day reminder email sent', 'WF3')"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 9am Cron": {
+      "main": [
+        [{ "node": "Query Upcoming Sessions", "type": "main", "index": 0 }]
+      ]
+    },
+    "Query Upcoming Sessions": {
+      "main": [
+        [{ "node": "Session Found?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Session Found?": {
+      "main": [
+        [{ "node": "Build Reminder Email", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build Reminder Email": {
+      "main": [
+        [{ "node": "Send Reminder via Resend", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Reminder via Resend": {
+      "main": [
+        [{ "node": "Log Interaction", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "wf3-session-reminder-2days",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "tags": []
+}

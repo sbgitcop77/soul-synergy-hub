@@ -1,0 +1,157 @@
+{
+  "name": "WF_BOOKING — Booking Confirmation Email",
+  "nodes": [
+    {
+      "id": "h1111111-1111-1111-1111-111111111111",
+      "name": "Booking Confirmation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf-booking-confirmation",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "options": {}
+      },
+      "webhookId": "wf-booking-confirmation-00000001"
+    },
+    {
+      "id": "h2222222-2222-2222-2222-222222222222",
+      "name": "Parse Booking Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\n// Split clientName into first / last\nconst fullName  = (body.clientName || '').trim();\nconst spaceIdx  = fullName.indexOf(' ');\nconst firstName = spaceIdx > -1 ? fullName.substring(0, spaceIdx) : fullName;\nconst lastName  = spaceIdx > -1 ? fullName.substring(spaceIdx + 1) : '';\n\nconst clientEmail = (body.clientEmail || '').trim().toLowerCase();\nconst service     = (body.service     || '').trim();\nconst date        = (body.date        || '').trim();\nconst time        = (body.time        || '').trim();\nconst bookingId   = String(body.bookingId || '').trim();\nconst amountPaid  = Number(body.amountPaid) || 0;\n\n// Escape single quotes for SQL embedding\nconst esc = (s) => (s || '').replace(/'/g, \"''\");\n\nconst isFree       = amountPaid === 0;\nconst amountStr    = isFree ? 'Complimentary' : '$' + amountPaid;\nconst meetUrl      = 'https://meet.google.com/pcn-mqgs-jsj';\nconst bookUrl      = 'https://soul-synergy-hub.pages.dev/book';\n\n// ── CLIENT CONFIRMATION EMAIL ──────────────────────────────────────────────\nconst clientHtml = [\n  '<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">',\n  '<h2 style=\"color:#2D6A6A;margin-bottom:16px\">\\u2705 You\\'re Booked, ' + firstName + '!</h2>',\n  '<p style=\"line-height:1.7;color:#333\">Hi ' + firstName + ',</p>',\n  '<p style=\"line-height:1.7;color:#333\">Your coaching session with Arushi is confirmed. Here are your details:</p>',\n  '<div style=\"background:#f0f7f7;border-left:4px solid #2D6A6A;padding:16px 20px;margin:20px 0;border-radius:0 4px 4px 0\">',\n  '<table style=\"width:100%;border-collapse:collapse;font-size:14px;color:#333\">',\n  '<tr><td style=\"padding:6px 0;width:130px;color:#555\"><strong>Service</strong></td><td style=\"padding:6px 0\">' + service + '</td></tr>',\n  '<tr><td style=\"padding:6px 0;color:#555\"><strong>Date</strong></td><td style=\"padding:6px 0\">' + date + '</td></tr>',\n  '<tr><td style=\"padding:6px 0;color:#555\"><strong>Time</strong></td><td style=\"padding:6px 0\">' + time + ' EST</td></tr>',\n  '<tr><td style=\"padding:6px 0;color:#555\"><strong>Amount</strong></td><td style=\"padding:6px 0\">' + amountStr + '</td></tr>',\n  '</table>',\n  '</div>',\n  '<p style=\"line-height:1.7;color:#333;margin-bottom:8px\"><strong>Join your session here:</strong></p>',\n  '<div style=\"text-align:center;margin:24px 0\">',\n  '<a href=\"' + meetUrl + '\" style=\"background:#2D6A6A;color:#fff;text-decoration:none;padding:14px 28px;border-radius:6px;font-size:15px;font-weight:600;display:inline-block\">\\uD83D\\uDCF9 Join on Google Meet</a>',\n  '</div>',\n  '<p style=\"line-height:1.7;color:#555;font-size:13px;text-align:center\">Or copy this link: <a href=\"' + meetUrl + '\" style=\"color:#2D6A6A\">' + meetUrl + '</a></p>',\n  (isFree\n    ? '<p style=\"line-height:1.7;color:#333\">This is a complimentary discovery call — a chance for us to connect, explore what you\\'re looking for, and see if we\\'re a good fit. Come as you are.</p>'\n    : '<p style=\"line-height:1.7;color:#333\">To make the most of your session, find a quiet space, have a pen and paper nearby, and arrive a minute or two early.</p>'\n  ),\n  '<p style=\"line-height:1.7;color:#333\">I\\'m looking forward to our time together!</p>',\n  '<p style=\"line-height:1.7;color:#333\">Warmly,<br><strong>Arushi Bhardwaj</strong><br>SoulSynergy Coaching</p>',\n  '<hr style=\"border:none;border-top:1px solid #eee;margin:24px 0\">',\n  '<p style=\"color:#999;font-size:12px\">SoulSynergy Coaching &mdash; Uncover. Align. Achieve.</p>',\n  '</div>'\n].join('');\n\nconst clientPayload = JSON.stringify({\n  from: 'SoulSynergy Coaching <onboarding@resend.dev>',\n  to: [clientEmail],\n  subject: '\\u2705 Booking confirmed — ' + service + ' on ' + date,\n  html: clientHtml\n});\n\n// ── ARUSHI NOTIFICATION EMAIL ──────────────────────────────────────────────\nconst arushiHtml = [\n  '<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">',\n  '<h2 style=\"color:#2D6A6A;margin-bottom:16px\">\\uD83D\\uDCC5 New Booking — ' + fullName + '</h2>',\n  '<table style=\"width:100%;border-collapse:collapse;font-size:14px;color:#333;border:1px solid #ddd\">',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5;width:130px\"><strong>Client</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd\">' + fullName + ' &lt;' + clientEmail + '&gt;</td></tr>',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5\"><strong>Service</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd;border-top:1px solid #ddd\">' + service + '</td></tr>',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5\"><strong>Date</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd;border-top:1px solid #ddd\">' + date + '</td></tr>',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5\"><strong>Time</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd;border-top:1px solid #ddd\">' + time + ' EST</td></tr>',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5\"><strong>Amount Paid</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd;border-top:1px solid #ddd\">' + amountStr + '</td></tr>',\n  '<tr><td style=\"padding:10px 14px;background:#f5f5f5\"><strong>Booking ID</strong></td><td style=\"padding:10px 14px;border-left:1px solid #ddd;border-top:1px solid #ddd;font-size:12px;color:#888\">' + bookingId + '</td></tr>',\n  '</table>',\n  '<p style=\"color:#999;font-size:12px;margin-top:16px\">Client confirmation email sent automatically.</p>',\n  '</div>'\n].join('');\n\nconst arushiPayload = JSON.stringify({\n  from: 'SoulSynergy Coaching <onboarding@resend.dev>',\n  to: ['connect.sscoach@gmail.com'],\n  subject: '\\uD83D\\uDCC5 New booking: ' + fullName + ' — ' + service + ' on ' + date,\n  html: arushiHtml\n});\n\nreturn [{\n  json: {\n    // SQL-safe (single quotes escaped)\n    first_name:      esc(firstName),\n    last_name:       esc(lastName),\n    email:           esc(clientEmail),\n    // Raw (for reference)\n    raw_first_name:  firstName,\n    raw_email:       clientEmail,\n    booking_id:      bookingId,\n    // Pre-built email payloads\n    client_payload:  clientPayload,\n    arushi_payload:  arushiPayload\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3333333-3333-3333-3333-333333333333",
+      "name": "Upsert Contact",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [680, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contacts (tenant_id, first_name, last_name, email, type, referral_source, last_interaction)\nVALUES (1, '{{ $('Parse Booking Data').item.json.first_name }}', '{{ $('Parse Booking Data').item.json.last_name }}', '{{ $('Parse Booking Data').item.json.email }}', 'paying_client', 'booking', NOW())\nON CONFLICT (tenant_id, email) DO UPDATE SET\n  type = 'paying_client',\n  last_interaction = NOW(),\n  updated_at = NOW()\nRETURNING id, first_name, last_name, email, type"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "h4444444-4444-4444-4444-444444444444",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [900, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO interactions (tenant_id, contact_id, direction, channel, subject, body, workflow_id)\nVALUES (1, {{ $('Upsert Contact').item.json.id }}, 'inbound', 'webhook', 'Booking Confirmation', 'Booking webhook received from confirm-booking.ts — booking ID {{ $('Parse Booking Data').item.json.booking_id }}', 'WF_BOOKING')"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "h5555555-5555-5555-5555-555555555555",
+      "name": "Send Client Confirmation via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_7fm5JUf6_27NeuHnavv9zyv9woPkN1BxU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Parse Booking Data').item.json.client_payload }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "h6666666-6666-6666-6666-666666666666",
+      "name": "Notify Arushi via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_7fm5JUf6_27NeuHnavv9zyv9woPkN1BxU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Parse Booking Data').item.json.arushi_payload }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Booking Confirmation Webhook": {
+      "main": [
+        [{ "node": "Parse Booking Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Booking Data": {
+      "main": [
+        [{ "node": "Upsert Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upsert Contact": {
+      "main": [
+        [{ "node": "Log Interaction", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Interaction": {
+      "main": [
+        [{ "node": "Send Client Confirmation via Resend", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Client Confirmation via Resend": {
+      "main": [
+        [{ "node": "Notify Arushi via Resend", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "wf-booking-confirmation-email",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "tags": []
+}

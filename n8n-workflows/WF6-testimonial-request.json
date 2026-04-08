@@ -1,0 +1,161 @@
+{
+  "name": "WF6 — Testimonial Request (3 Attempts)",
+  "nodes": [
+    {
+      "id": "g1111111-1111-1111-1111-111111111111",
+      "name": "Daily 9am Cron",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "g2222222-2222-2222-2222-222222222222",
+      "name": "Query Sessions Without Testimonial",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [460, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.id AS session_id,\n  s.scheduled_at,\n  s.type AS session_type,\n  c.id AS contact_id,\n  c.first_name,\n  c.last_name,\n  c.email\nFROM sessions s\nJOIN contacts c ON c.id = s.contact_id\nLEFT JOIN testimonials t ON t.contact_id = c.id AND t.tenant_id = 1\nWHERE s.tenant_id = 1\n  AND s.coach_id = 1\n  AND s.status = 'completed'\n  AND (s.scheduled_at AT TIME ZONE 'America/New_York')::date IN (\n    (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date - INTERVAL '3 days',\n    (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date - INTERVAL '7 days',\n    (CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date - INTERVAL '14 days'\n  )\n  AND t.id IS NULL"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "g3333333-3333-3333-3333-333333333333",
+      "name": "Session Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "g3-cond-1",
+              "leftValue": "={{ $json.session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "g4444444-4444-4444-4444-444444444444",
+      "name": "Build Testimonial Request Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  const firstName   = (data.first_name || 'there').trim();\n  const email       = (data.email     || '').trim();\n  const sessionId   = data.session_id;\n  const contactId   = data.contact_id;\n  const scheduledAt = new Date(data.scheduled_at);\n\n  const dateStr = scheduledAt.toLocaleDateString('en-US', {\n    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',\n    timeZone: 'America/New_York'\n  });\n\n  const testimonialsUrl = 'https://soul-synergy-hub.pages.dev/testimonials';\n\n  const html = [\n    '<div style=\"font-family:sans-serif;max-width:600px;margin:0 auto\">',\n    '<h2 style=\"color:#2D6A6A;margin-bottom:16px\">\\u2764\\uFE0F How Was Your Session?</h2>',\n    '<p style=\"line-height:1.7;color:#333\">Hi ' + firstName + ',</p>',\n    '<p style=\"line-height:1.7;color:#333\">I hope you\\'ve had time to reflect on our coaching session on <strong>' + dateStr + '</strong>. It was a privilege working with you, and I\\'d love to hear how it landed for you.</p>',\n    '<p style=\"line-height:1.7;color:#333\">If you found our time together valuable, would you be willing to share a few words? Your feedback means the world — both to me personally, and to others who are considering taking the first step on their own journey.</p>',\n    '<div style=\"text-align:center;margin:32px 0\">',\n    '<a href=\"' + testimonialsUrl + '\" style=\"background:#2D6A6A;color:#fff;text-decoration:none;padding:14px 28px;border-radius:6px;font-size:15px;font-weight:600;display:inline-block\">Share Your Feedback</a>',\n    '</div>',\n    '<p style=\"line-height:1.7;color:#333\">It takes just a couple of minutes, and your words genuinely help others find the courage to invest in themselves.</p>',\n    '<p style=\"line-height:1.7;color:#333\">Thank you so much — I\\'m grateful for you.</p>',\n    '<p style=\"line-height:1.7;color:#333\">With warmth,<br><strong>Arushi Bhardwaj</strong><br>SoulSynergy Coaching</p>',\n    '<hr style=\"border:none;border-top:1px solid #eee;margin:24px 0\">',\n    '<p style=\"color:#999;font-size:12px\">SoulSynergy Coaching &mdash; Uncover. Align. Achieve.</p>',\n    '</div>'\n  ].join('');\n\n  const resendPayload = JSON.stringify({\n    from: 'SoulSynergy Coaching <onboarding@resend.dev>',\n    to: [email],\n    subject: '\\u2764\\uFE0F ' + firstName + ', how was your coaching session?',\n    html: html\n  });\n\n  return {\n    json: {\n      session_id:     sessionId,\n      contact_id:     contactId,\n      email:          email,\n      resend_payload: resendPayload\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "g5555555-5555-5555-5555-555555555555",
+      "name": "Send Testimonial Request via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_7fm5JUf6_27NeuHnavv9zyv9woPkN1BxU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Build Testimonial Request Email').item.json.resend_payload }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "g6666666-6666-6666-6666-666666666666",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1340, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO interactions (tenant_id, contact_id, session_id, direction, channel, subject, body, workflow_id)\nVALUES (1, {{ $('Build Testimonial Request Email').item.json.contact_id }}, {{ $('Build Testimonial Request Email').item.json.session_id }}, 'outbound', 'email', 'Testimonial Request', 'Automated testimonial request email sent', 'WF6')"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 9am Cron": {
+      "main": [
+        [{ "node": "Query Sessions Without Testimonial", "type": "main", "index": 0 }]
+      ]
+    },
+    "Query Sessions Without Testimonial": {
+      "main": [
+        [{ "node": "Session Found?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Session Found?": {
+      "main": [
+        [{ "node": "Build Testimonial Request Email", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build Testimonial Request Email": {
+      "main": [
+        [{ "node": "Send Testimonial Request via Resend", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send Testimonial Request via Resend": {
+      "main": [
+        [{ "node": "Log Interaction", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "wf6-testimonial-request",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "tags": []
+}

@@ -1,0 +1,124 @@
+{
+  "name": "WF1 — Contact Form Handler",
+  "nodes": [
+    {
+      "id": "a1111111-1111-1111-1111-111111111111",
+      "name": "Contact Form Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf1-contact-form",
+        "responseMode": "onReceived",
+        "responseCode": 200,
+        "options": {}
+      },
+      "webhookId": "wf1-contact-form-00000001"
+    },
+    {
+      "id": "a2222222-2222-2222-2222-222222222222",
+      "name": "Parse Contact Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "// Accept body from webhook (POST body is in .body or top-level)\nconst body = $input.first().json.body || $input.first().json;\n\n// Split full name into first / last\nconst fullName = (body.name || '').trim();\nconst spaceIdx = fullName.indexOf(' ');\nconst firstName = spaceIdx > -1 ? fullName.substring(0, spaceIdx) : fullName;\nconst lastName  = spaceIdx > -1 ? fullName.substring(spaceIdx + 1) : '';\n\nconst emailAddr  = (body.email   || '').trim().toLowerCase();\nconst message    = (body.message || '').trim();\n\n// Escape single quotes for SQL embedding\nconst esc = (s) => (s || '').replace(/'/g, \"''\");\n\n// Pre-build Resend email payload (safe: JSON.stringify handles all escaping)\nconst emailHtml = [\n  '<h2 style=\"color:#2D6A6A;font-family:sans-serif;margin-bottom:16px\">New Contact Form Submission</h2>',\n  '<table style=\"border-collapse:collapse;width:100%;max-width:600px;font-family:sans-serif;font-size:14px\">',\n  '<tr><td style=\"padding:12px;border:1px solid #ddd;background:#f5f5f5;width:100px\"><strong>Name</strong></td>',\n  '<td style=\"padding:12px;border:1px solid #ddd\">' + fullName + '</td></tr>',\n  '<tr><td style=\"padding:12px;border:1px solid #ddd;background:#f5f5f5\"><strong>Email</strong></td>',\n  '<td style=\"padding:12px;border:1px solid #ddd\"><a href=\"mailto:' + emailAddr + '\" style=\"color:#2D6A6A\">' + emailAddr + '</a></td></tr>',\n  '<tr><td style=\"padding:12px;border:1px solid #ddd;background:#f5f5f5\"><strong>Message</strong></td>',\n  '<td style=\"padding:12px;border:1px solid #ddd;white-space:pre-wrap\">' + message + '</td></tr>',\n  '</table>',\n  '<p style=\"color:#999;font-size:12px;margin-top:16px;font-family:sans-serif\">Saved to Neon DB automatically.</p>'\n].join('');\n\nconst resendPayload = JSON.stringify({\n  from: 'SoulSynergy Coaching <onboarding@resend.dev>',\n  to: ['connect.sscoach@gmail.com'],\n  subject: '\\u2728 New Contact: ' + fullName,\n  html: emailHtml\n});\n\nreturn [{\n  json: {\n    // SQL-safe values (single quotes escaped)\n    first_name:     esc(firstName),\n    last_name:      esc(lastName),\n    email:          esc(emailAddr),\n    message:        esc(message),\n    full_name:      esc(fullName),\n    // Raw values for email (not SQL)\n    raw_full_name:  fullName,\n    raw_email:      emailAddr,\n    raw_message:    message,\n    // Pre-built Resend payload string\n    resend_payload: resendPayload\n  }\n}];"
+      }
+    },
+    {
+      "id": "a3333333-3333-3333-3333-333333333333",
+      "name": "Upsert Contact",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [680, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO contacts (tenant_id, first_name, last_name, email, type, referral_source, last_interaction)\nVALUES (1, '{{ $('Parse Contact Data').item.json.first_name }}', '{{ $('Parse Contact Data').item.json.last_name }}', '{{ $('Parse Contact Data').item.json.email }}', 'lead', 'contact_form', NOW())\nON CONFLICT (tenant_id, email) DO UPDATE SET last_interaction = NOW(), updated_at = NOW()\nRETURNING id, first_name, last_name, email, type"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "a4444444-4444-4444-4444-444444444444",
+      "name": "Log Interaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [900, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO interactions (tenant_id, contact_id, direction, channel, subject, body, workflow_id)\nVALUES (1, {{ $('Upsert Contact').item.json.id }}, 'inbound', 'form', 'Contact Form Submission', '{{ $('Parse Contact Data').item.json.raw_message }}', 'WF1')"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "T9eZRjBtW6TwPA3p",
+          "name": "SoulSynergy Neon DB"
+        }
+      }
+    },
+    {
+      "id": "a5555555-5555-5555-5555-555555555555",
+      "name": "Notify Arushi via Resend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer re_7fm5JUf6_27NeuHnavv9zyv9woPkN1BxU"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Parse Contact Data').item.json.resend_payload }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Contact Form Webhook": {
+      "main": [
+        [{ "node": "Parse Contact Data", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse Contact Data": {
+      "main": [
+        [{ "node": "Upsert Contact", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upsert Contact": {
+      "main": [
+        [{ "node": "Log Interaction", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log Interaction": {
+      "main": [
+        [{ "node": "Notify Arushi via Resend", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "id": "wf1-contact-form-handler",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "local"
+  },
+  "tags": []
+}

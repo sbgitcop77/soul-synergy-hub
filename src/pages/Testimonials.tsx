@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import SectionReveal from "@/components/SectionReveal";
 
-const testimonials = [
+const STATIC_TESTIMONIALS = [
   {
     name: "Poonam Agrawal",
     title: "Program Management, IT Industry",
@@ -35,7 +35,17 @@ const testimonials = [
   },
 ];
 
+interface Testimonial {
+  id?: string | number;
+  name: string;
+  title?: string;
+  text?: string;
+  message?: string;
+  rating: number;
+}
+
 const Testimonials = () => {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(STATIC_TESTIMONIALS);
   const [current, setCurrent] = useState(0);
   const isHovered = useRef(false);
 
@@ -48,6 +58,25 @@ const Testimonials = () => {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+
+  // Fetch approved testimonials from DB
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        const res = await fetch("/api/get-testimonials?status=approved");
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        if (data.testimonials && data.testimonials.length > 0) {
+          setTestimonials(data.testimonials);
+          setCurrent(0);
+        }
+        // If no approved testimonials yet, keep static ones as fallback
+      } catch {
+        // Silently fall back to static testimonials
+      }
+    };
+    fetchTestimonials();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,7 +111,10 @@ const Testimonials = () => {
       if (!isHovered.current) setCurrent((c) => (c + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [testimonials.length]);
+
+  const current_t = testimonials[current];
+  const displayText = current_t.text ?? current_t.message ?? "";
 
   return (
     <div>
@@ -115,19 +147,19 @@ const Testimonials = () => {
               {/* Card */}
               <div className="card-service text-center h-[320px] flex flex-col">
                 <div className="flex gap-1 justify-center mb-6 flex-shrink-0">
-                  {Array.from({ length: testimonials[current].rating }).map((_, j) => (
+                  {Array.from({ length: current_t.rating }).map((_, j) => (
                     <Star key={j} size={14} className="fill-accent text-accent" />
                   ))}
                 </div>
                 <div className="overflow-y-auto flex-1 mb-6 pr-1">
                   <p className="text-sm text-muted-foreground leading-relaxed italic">
-                    "{testimonials[current].text}"
+                    "{displayText}"
                   </p>
                 </div>
                 <div className="flex-shrink-0">
-                  <p className="text-sm font-medium">{testimonials[current].name}</p>
-                  {testimonials[current].title && (
-                    <p className="text-xs text-muted-foreground">{testimonials[current].title}</p>
+                  <p className="text-sm font-medium">{current_t.name}</p>
+                  {current_t.title && (
+                    <p className="text-xs text-muted-foreground">{current_t.title}</p>
                   )}
                 </div>
               </div>
