@@ -49,16 +49,17 @@ export async function onRequest(context: {
   try {
     const testimonials = await sql`
       SELECT
-        id,
-        name,
-        email,
-        rating,
-        message,
-        status,
-        created_at
-      FROM testimonials
-      WHERE status = ${status}
-      ORDER BY created_at DESC
+        t.id,
+        t.rating,
+        t.body AS message,
+        t.status,
+        t.submitted_at AS created_at,
+        COALESCE(c.first_name || ' ' || c.last_name, c.first_name, 'Anonymous') AS name,
+        c.email
+      FROM testimonials t
+      LEFT JOIN contacts c ON c.id = t.contact_id
+      WHERE t.status = ${status}
+      ORDER BY t.submitted_at DESC
     `;
 
     return new Response(JSON.stringify({ testimonials }), {

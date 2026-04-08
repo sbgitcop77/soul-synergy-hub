@@ -75,18 +75,25 @@ export async function onRequest(context: {
   const sql = neon(cleanNeonUrl(env.NEON_DATABASE_URL));
 
   try {
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) {
+      return new Response(JSON.stringify({ error: "Invalid id" }), {
+        status: 400,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
     if (action === "approve") {
       await sql`
         UPDATE testimonials
         SET status = 'approved', is_published = true
-        WHERE id = ${id}
+        WHERE id = ${numericId}
       `;
     } else {
-      // reject — keep the record but mark as rejected
       await sql`
         UPDATE testimonials
         SET status = 'rejected', is_published = false
-        WHERE id = ${id}
+        WHERE id = ${numericId}
       `;
     }
 
