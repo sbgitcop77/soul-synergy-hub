@@ -67,7 +67,8 @@ const Testimonials = () => {
         if (!res.ok) throw new Error("Failed to fetch");
         const data = await res.json();
         if (data.testimonials && data.testimonials.length > 0) {
-          setTestimonials(data.testimonials);
+          // Merge: DB testimonials first, then static ones
+          setTestimonials([...data.testimonials, ...STATIC_TESTIMONIALS]);
           setCurrent(0);
         }
         // If no approved testimonials yet, keep static ones as fallback
