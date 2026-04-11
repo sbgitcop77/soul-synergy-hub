@@ -3,6 +3,17 @@ import { neon } from "@neondatabase/serverless";
 
 const CALENDAR_ID = "connect.sscoach@gmail.com";
 const TIMEZONE    = "America/New_York";
+const TENANT_ID   = 1;
+const COACH_ID    = 1;
+
+// Maps service name → session_type enum
+const SESSION_TYPE_MAP: Record<string, string> = {
+  "Free Consultation":    "free_consultation",
+  "Clarity Session":      "paid_session",
+  "Align with Goals":     "paid_session",
+  "90-Day Transformation":"paid_session",
+  "Pay as You Go":        "paid_session",
+};
 
 function cleanNeonUrl(raw: string): string {
   try {
@@ -28,7 +39,11 @@ function slotToUTC(dateStr: string, hour: number): Date {
   return new Date(`${dateStr}T${String(utcHour).padStart(2, "0")}:00:00.000Z`);
 }
 
-async function getAccessToken(clientId: string, clientSecret: string, refreshToken: string): Promise<string> {
+async function getAccessToken(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string
+): Promise<string> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -66,8 +81,13 @@ export async function onRequest(context: {
     });
   }
 
-  let paymentIntentId: string | null, service: string, date: string,
-      time: string, clientName: string, clientEmail: string;
+  // ── Parse request body ────────────────────────────────────────────────────
+  let paymentIntentId: string | null,
+      service: string,
+      date: string,
+      time: string,
+      clientName: string,
+      clientEmail: string;
 
   try {
     const body = await request.json() as {
@@ -88,53 +108,73 @@ export async function onRequest(context: {
       throw new Error("Missing fields");
     }
   } catch {
-    return new Response(JSON.stringify({ error: "Missing or invalid request body" }), {
-      status: 400,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Missing or invalid request body" }),
+      { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+    );
   }
 
   const isFree = paymentIntentId === null;
   let amountPaidCents = 0;
-  const recordId = isFree
-    ? `free_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    : paymentIntentId!;
 
+  // ── Verify Stripe payment (paid bookings only) ────────────────────────────
   if (!isFree) {
     const stripe = new Stripe(env.STRIPE_SECRET_KEY);
     try {
       const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId!);
       if (paymentIntent.status !== "succeeded") {
-        return new Response(JSON.stringify({ error: "Payment has not succeeded" }), {
-          status: 400,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Payment has not succeeded" }),
+          { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+        );
       }
       amountPaidCents = paymentIntent.amount;
     } catch (err) {
       console.error("Stripe verification failed:", err);
-      return new Response(JSON.stringify({ error: "Payment verification failed" }), {
-        status: 500,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Payment verification failed" }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
     }
   }
 
   const sql = neon(cleanNeonUrl(env.NEON_DATABASE_URL));
 
   try {
-    // 1. Idempotency check
-    const existing = await sql`
-      SELECT * FROM bookings WHERE stripe_payment_id = ${recordId} LIMIT 1
-    `;
-    if (existing.length > 0) {
-      return new Response(JSON.stringify({ booking: existing[0] }), {
-        status: 200,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+    // ── 1. Idempotency check (sessions table via stripe_payment_intent on payments) ──
+    if (!isFree) {
+      const existing = await sql`
+        SELECT s.id, s.scheduled_at, s.type, s.status, s.calendar_event_id,
+               c.first_name, c.last_name, c.email,
+               p.amount, p.stripe_payment_intent
+        FROM payments p
+        JOIN sessions s ON s.id = p.session_id
+        JOIN contacts c ON c.id = s.contact_id
+        WHERE p.stripe_payment_intent = ${paymentIntentId}
+        LIMIT 1
+      `;
+      if (existing.length > 0) {
+        const row = existing[0];
+        return new Response(JSON.stringify({
+          booking: {
+            id:                String(row.id),
+            service,
+            date,
+            time,
+            client_name:       `${row.first_name} ${row.last_name}`.trim(),
+            client_email:      row.email,
+            amount_paid:       row.amount,
+            stripe_payment_id: row.stripe_payment_intent,
+            calendar_event_id: row.calendar_event_id,
+          }
+        }), {
+          status: 200,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
     }
 
-    // 2. Create Google Calendar event via REST API
+    // ── 2. Create Google Calendar event ──────────────────────────────────────
     let calendarEventId: string | null = null;
     try {
       const accessToken = await getAccessToken(
@@ -173,50 +213,119 @@ export async function onRequest(context: {
       calendarEventId = calData.id ?? null;
     } catch (calErr) {
       console.error("Google Calendar event creation failed:", calErr);
+      // Non-fatal — continue with booking
     }
 
-    // 3. Write booking to Neon
-    const result = await sql`
-      INSERT INTO bookings
-        (service, date, time, client_name, client_email, amount_paid, stripe_payment_id, calendar_event_id)
-      VALUES
-        (${service}, ${date}, ${time}, ${clientName}, ${clientEmail},
-         ${amountPaidCents}, ${recordId}, ${calendarEventId})
-      RETURNING *
-    `;
-    const booking = result[0];
+    // ── 3. Upsert contact ─────────────────────────────────────────────────────
+    const nameParts  = clientName.trim().split(/\s+/);
+    const firstName  = nameParts[0] ?? "";
+    const lastName   = nameParts.slice(1).join(" ") ?? "";
+    const contactType = isFree ? "consultation" : "paying_client";
 
-    // 4. Trigger n8n webhook (fire-and-forget)
+    const contactRows = await sql`
+      INSERT INTO contacts
+        (tenant_id, first_name, last_name, email, type, referral_source, last_interaction)
+      VALUES
+        (${TENANT_ID}, ${firstName}, ${lastName}, ${clientEmail.toLowerCase()},
+         ${contactType}::contact_type, 'booking', NOW())
+      ON CONFLICT (tenant_id, email) DO UPDATE SET
+        type             = EXCLUDED.type,
+        last_interaction = NOW(),
+        updated_at       = NOW()
+      RETURNING id, first_name, last_name, email
+    `;
+    const contact = contactRows[0];
+
+    // ── 4. Insert session ─────────────────────────────────────────────────────
+    const hour          = parseInt(time.split(":")[0]);
+    const scheduledAt   = slotToUTC(date, hour);
+    const sessionType   = SESSION_TYPE_MAP[service] ?? "paid_session";
+    const meetingUrl    = "https://meet.google.com/pcn-mqgs-jsj";
+    const durationMins  = isFree ? 30 : 60;
+
+    const sessionRows = await sql`
+      INSERT INTO sessions
+        (tenant_id, contact_id, coach_id, type, status, scheduled_at,
+         duration_mins, calendar_event_id, meeting_url)
+      VALUES
+        (${TENANT_ID}, ${contact.id}, ${COACH_ID},
+         ${sessionType}::session_type, 'scheduled'::session_status,
+         ${scheduledAt.toISOString()}, ${durationMins},
+         ${calendarEventId}, ${meetingUrl})
+      RETURNING id, scheduled_at, calendar_event_id
+    `;
+    const session = sessionRows[0];
+
+    // ── 5. Insert payment (paid only) ─────────────────────────────────────────
+    if (!isFree) {
+      await sql`
+        INSERT INTO payments
+          (tenant_id, contact_id, session_id, stripe_payment_intent,
+           amount, currency, status)
+        VALUES
+          (${TENANT_ID}, ${contact.id}, ${session.id}, ${paymentIntentId},
+           ${amountPaidCents}, 'usd', 'succeeded'::payment_status)
+      `;
+    }
+
+    // ── 6. Log interaction ────────────────────────────────────────────────────
+    await sql`
+      INSERT INTO interactions
+        (tenant_id, contact_id, session_id, direction, channel, subject, body, workflow_id)
+      VALUES
+        (${TENANT_ID}, ${contact.id}, ${session.id},
+         'inbound'::interaction_direction,
+         'webhook'::interaction_channel,
+         'Booking Confirmed',
+         ${`Booking confirmed via /book — service: ${service}, session id: ${session.id}`},
+         'confirm-booking')
+    `;
+
+    // ── 7. Fire WF_BOOKING webhook (fire-and-forget) ──────────────────────────
     const webhookUrl = env.VITE_N8N_BOOKING_WEBHOOK_URL;
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type:       "booking_confirmation",
+          type:        "booking_confirmation",
           service,
           date,
           time,
           clientName,
           clientEmail,
-          amountPaid: amountPaidCents / 100,
-          bookingId:  booking.id,
+          amountPaid:  amountPaidCents / 100,
+          bookingId:   String(session.id),   // WF_BOOKING uses this as bookingId
         }),
       }).catch((e) => console.error("n8n webhook failed:", e));
     }
 
-    return new Response(JSON.stringify({ booking }), {
+    // ── 8. Return response shaped like legacy Booking type (Book.tsx compatible) ──
+    return new Response(JSON.stringify({
+      booking: {
+        id:                String(session.id),
+        service,
+        date,
+        time,
+        client_name:       clientName,
+        client_email:      clientEmail,
+        amount_paid:       amountPaidCents,
+        stripe_payment_id: paymentIntentId ?? `free_${session.id}`,
+        calendar_event_id: calendarEventId,
+      }
+    }), {
       status: 200,
       headers: { ...cors, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const stack   = err instanceof Error ? err.stack   : undefined;
     console.error("confirm-booking error:", message);
     if (stack) console.error(stack);
-    return new Response(JSON.stringify({ error: "Failed to confirm booking", detail: message }), {
-      status: 500,
-      headers: { ...cors, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Failed to confirm booking", detail: message }),
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+    );
   }
 }
