@@ -178,7 +178,7 @@ export async function onRequest(context: {
     let calendarEventId: string | null = null;
     try {
       const accessToken = await getAccessToken(
-        env.VITE_GOOGLE_CLIENT_ID,
+        env.GOOGLE_CLIENT_ID,
         env.GOOGLE_CLIENT_SECRET,
         env.GOOGLE_REFRESH_TOKEN
       );
