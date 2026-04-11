@@ -281,23 +281,28 @@ export async function onRequest(context: {
          'confirm-booking')
     `;
 
-    // ── 7. Fire WF_BOOKING webhook (fire-and-forget) ──────────────────────────
+    // ── 7. Fire WF_BOOKING webhook (awaited — Cloudflare kills fire-and-forget) ──
     const webhookUrl = env.VITE_N8N_BOOKING_WEBHOOK_URL;
     if (webhookUrl) {
-      fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type:        "booking_confirmation",
-          service,
-          date,
-          time,
-          clientName,
-          clientEmail,
-          amountPaid:  amountPaidCents / 100,
-          bookingId:   String(session.id),   // WF_BOOKING uses this as bookingId
-        }),
-      }).catch((e) => console.error("n8n webhook failed:", e));
+      try {
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type:        "booking_confirmation",
+            service,
+            date,
+            time,
+            clientName,
+            clientEmail,
+            amountPaid:  amountPaidCents / 100,
+            bookingId:   String(session.id),
+          }),
+        });
+      } catch (e) {
+        console.error("n8n webhook failed:", e);
+        // Non-fatal — booking is already saved
+      }
     }
 
     // ── 8. Return response shaped like legacy Booking type (Book.tsx compatible) ──
