@@ -47,8 +47,11 @@ export async function onRequest(context: {
       });
     }
 
-    const promo  = promos.data[0] as Stripe.PromotionCode & { coupon: Stripe.Coupon };
-    const coupon = promo.coupon;
+    const promo  = promos.data[0];
+    console.log("promo keys:", JSON.stringify(Object.keys(promo)));
+    console.log("promo.coupon:", JSON.stringify((promo as any).coupon));
+    const coupon = (promo as any).coupon;
+    if (!coupon) throw new Error("Coupon not expanded: " + JSON.stringify(promo));
 
     return new Response(JSON.stringify({
       valid:       true,
