@@ -186,8 +186,12 @@ function ServiceStep({ onSelect }: { onSelect: (s: Service) => void }) {
                 </div>
               ))}
             </div>
-          </button>
-        ))}
+            <div className="mt-6 pt-4 border-t border-border">
+              <span className="inline-block w-full text-center text-xs tracking-[0.15em] uppercase bg-accent text-accent-foreground px-4 py-2.5 group-hover:opacity-90 transition-opacity">
+                Book Now
+              </span>
+            </div>
+          </button>        ))}
       </div>
     </div>
   );
