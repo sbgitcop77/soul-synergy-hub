@@ -282,7 +282,7 @@ export async function onRequest(context: {
     `;
 
     // ── 7. Fire WF_BOOKING webhook (awaited — Cloudflare kills fire-and-forget) ──
-    const webhookUrl = env.VITE_N8N_BOOKING_WEBHOOK_URL;
+    const webhookUrl = env.N8N_BOOKING_WEBHOOK_URL;
     if (webhookUrl) {
       try {
         await fetch(webhookUrl, {
