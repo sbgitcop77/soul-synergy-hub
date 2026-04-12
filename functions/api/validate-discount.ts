@@ -62,7 +62,7 @@ export async function onRequest(context: {
     });
   } catch (err) {
     console.error("validate-discount error:", err);
-    return new Response(JSON.stringify({ error: "Failed to validate discount code" }), {
+    return new Response(JSON.stringify({ error: "Failed to validate discount code", detail: String(err) }), {
       status: 500,
       headers: { ...cors, "Content-Type": "application/json" },
     });
