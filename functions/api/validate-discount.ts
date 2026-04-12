@@ -38,7 +38,7 @@ export async function onRequest(context: {
   const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
   try {
-    const promos = await stripe.promotionCodes.list({ code, active: true, limit: 1 });
+    const promos = await stripe.promotionCodes.list({ code, active: true, limit: 1, expand: ['data.coupon'] });
 
     if (promos.data.length === 0) {
       return new Response(JSON.stringify({ valid: false }), {
