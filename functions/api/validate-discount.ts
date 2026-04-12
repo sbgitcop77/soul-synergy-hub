@@ -38,7 +38,7 @@ export async function onRequest(context: {
   const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
   try {
-    const promos = await stripe.promotionCodes.list({ code, active: true, limit: 1, expand: ['data.coupon'] });
+    const promos = await stripe.promotionCodes.list({ code, active: true, limit: 1 });
 
     if (promos.data.length === 0) {
       return new Response(JSON.stringify({ valid: false }), {
@@ -47,11 +47,11 @@ export async function onRequest(context: {
       });
     }
 
-    const promo  = promos.data[0];
-    console.log("promo keys:", JSON.stringify(Object.keys(promo)));
-    console.log("promo.coupon:", JSON.stringify((promo as any).coupon));
-    const coupon = (promo as any).coupon;
-    if (!coupon) throw new Error("Coupon not expanded: " + JSON.stringify(promo));
+    const promo = promos.data[0];
+    const couponId = (promo as any).promotion?.coupon;
+    if (!couponId) throw new Error("No coupon found on promotion code");
+
+    const coupon = await stripe.coupons.retrieve(couponId);
 
     return new Response(JSON.stringify({
       valid:       true,
@@ -63,6 +63,7 @@ export async function onRequest(context: {
       status: 200,
       headers: { ...cors, "Content-Type": "application/json" },
     });
+
   } catch (err) {
     console.error("validate-discount error:", err);
     return new Response(JSON.stringify({ error: "Failed to validate discount code", detail: String(err) }), {
